@@ -124,7 +124,15 @@ if [ -n "$pkgs" ]; then
 	done
 fi
 cat > "$hshroot"/chroot/.in/build.sh <<EOF
-for i in *.x86_64.rpm; do AREPO_MODE="$arepo_mode" AREPO_PKGLIST=arepo-x86_64-i586.list AREPO_ARCH=i586 AREPO_COMPAT=\$(basename "\$i" .x86_64.rpm).i586.rpm AREPO_NATIVE="\$i" rpmrebuild -np --include arepo.plug \$(basename "\$i" .x86_64.rpm).i586.rpm; done
+#!/bin/sh -eu
+for i in *.i586.rpm; do
+    export AREPO_MODE="$arepo_mode"
+    export AREPO_PKGLIST=arepo-x86_64-i586.list
+    export AREPO_ARCH=i586
+    export AREPO_COMPAT="\$i"
+    [ -s \$(basename "\$i" .i586.rpm).x86_64.rpm ] && export AREPO_NATIVE="\$(basename "\$i" .i586.rpm).x86_64.rpm" ||:
+    rpmrebuild -np --include arepo.plug "\$i"
+done
 EOF
 chmod +x "$hshroot"/chroot/.in/build.sh
 hsh-run "$hshopts" "$hshroot" ./build.sh && echo 'Build completed, copying pkgs back...'
