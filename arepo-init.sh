@@ -43,6 +43,8 @@ EOF
 	exit
 }
 
+# packages without native conflicts
+native_packages="^wine-vanilla$|^steam$"
 
 TEMP=`getopt -n $PROG -o 'r:,o:h,V' -l 'release:,hsh-options:,hsh-root:,hsh-repo:,arepo-mode:,pkgsdir:,keep,help,version' -- "$@"` ||
 	show_usage
@@ -83,6 +85,7 @@ esac
 
 pkgs="${@:-}"
 arepo="$hshrepo/x86_64-i586"
+vers_orig=
 
 [ -n "$pkgs" ] || show_usage
 
@@ -98,7 +101,6 @@ if [ -z "$vers" ]; then
 	pkg_version="$spec_version"
 	pkg_release="$spec_release"
 	vers="$pkg_version-$pkg_release"
-	vers_orig=
 fi
 
 i386 hsh "$hshopts" --init --target=i586 --apt-config=/home/lakostis/Documents/apt.conf.i586 "$hshroot"
@@ -107,6 +109,9 @@ cp -a "$pkgsdir"/Sisyphus/files/list/arepo-x86_64-i586.list "$hshroot"/chroot/.i
 if [ -n "$pkgs" ]; then
 	for pkg in $pkgs; do
 		for arch in x86_64 i586; do
+			if [ "$arch" == "x86_64" ]; then
+				printf '%s' $pkg | egrep -qs "$native_packages" && continue
+			fi
 			if [ "$pkg" != "${pkg%%=*}" ]; then
 				vers_orig="$vers"
 				vers=${pkg##*=}
