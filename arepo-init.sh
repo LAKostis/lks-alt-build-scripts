@@ -44,7 +44,7 @@ EOF
 }
 
 # packages without native conflicts
-native_packages="^wine-vanilla$|^steam$"
+native_packages="^wine-(staging|vanilla)$|^steam$"
 
 TEMP=`getopt -n $PROG -o 'r:,o:h,V' -l 'release:,hsh-options:,hsh-root:,hsh-repo:,arepo-mode:,pkgsdir:,keep,help,version' -- "$@"` ||
 	show_usage
@@ -105,7 +105,7 @@ fi
 
 i386 hsh "$hshopts" --init --target=i586 --apt-config=/home/lakostis/Documents/apt.conf.i586 "$hshroot"
 hsh-install "$hshopts" "$hshroot" rpmrebuild-arepo && \
-cp -a "$pkgsdir"/Sisyphus/files/list/arepo-x86_64-i586.list "$hshroot"/chroot/.in/
+xzcat "$pkgsdir"/Sisyphus/files/list/arepo-x86_64-i586.list.xz > "$hshroot"/chroot/.in/arepo-x86_64-i586.list
 if [ -n "$pkgs" ]; then
 	for pkg in $pkgs; do
 		for arch in x86_64 i586; do
@@ -136,7 +136,8 @@ for i in *.i586.rpm; do
     export AREPO_ARCH=i586
     export AREPO_COMPAT="\$i"
     [ -s \$(basename "\$i" .i586.rpm).x86_64.rpm ] && export AREPO_NATIVE="\$(basename "\$i" .i586.rpm).x86_64.rpm" ||:
-    rpmrebuild -np --include arepo.plug "\$i"
+    rpmrebuild -np --include arepo.plug --define '_spec_line_buffer_size 262144' \\
+    --define '_allow_deps_with_beginning_dot 1' \$AREPO_COMPAT
 done
 EOF
 chmod +x "$hshroot"/chroot/.in/build.sh
@@ -152,11 +153,11 @@ for pkg in $pkgs; do
 			rm -f $arepo/RPMS.hasher/i586-$pkg* ||:
 		fi
         fi
+        [ -d $arepo/RPMS.hasher ] || mkdir -p $arepo/RPMS.hasher
 	cp -a "$hshroot"/chroot/usr/src/RPM/RPMS/i586/i586-$pkg-$vers.i586.rpm "$arepo"/RPMS.hasher/
 	[ -n "$vers_orig" ] && vers=$vers_orig
 	vers_orig=
 done
 echo -n 'Updating arepo repo...'
-rm -rf "$arepo"/base && \
-mkdir -p "$arepo"/base && \
-genbasedir --bloat --topdir="$hshrepo" x86_64-i586 && echo 'Done!'
+rm -rf $arepo/base && \
+genbasedir --flat --create --topdir "$hshrepo" x86_64-i586 && echo 'Done!'
